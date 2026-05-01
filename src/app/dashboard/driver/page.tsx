@@ -50,11 +50,13 @@ import {
   Lock
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 
-const MapComponent = dynamic(() => import('@/components/Map'), { 
+export const dynamic = 'force-dynamic'
+
+const MapComponent = nextDynamic(() => import('@/components/Map'), { 
   ssr: false,
   loading: () => <div className="h-full w-full bg-slate-50 animate-pulse flex items-center justify-center text-slate-400">Loading Map...</div>
 })
