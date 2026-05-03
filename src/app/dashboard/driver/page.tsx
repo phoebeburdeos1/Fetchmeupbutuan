@@ -159,6 +159,7 @@ export default function DriverDashboard() {
   }
 
   const handleLogout = async () => {
+    document.cookie = "admin_access=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;"
     await supabase.auth.signOut()
     router.push('/login')
   }

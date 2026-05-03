@@ -188,6 +188,7 @@ export default function UserDashboard() {
   }
 
   const handleLogout = async () => {
+    document.cookie = "admin_access=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;"
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -198,6 +199,44 @@ export default function UserDashboard() {
     if (ride.driver_id) {
       const { data } = await supabase.from('profiles').select('full_name').eq('id', ride.driver_id).maybeSingle()
       if (data) setHistoryDriver(data)
+    }
+  }
+
+  const handleSubmitFeedback = async () => {
+    if (rating === 0) { toast.error("Please select a rating"); return; }
+    
+    // Get the last completed ride for this user that hasn't been reviewed
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: lastRide } = await supabase
+      .from('rides')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (lastRide && lastRide.driver_id) {
+      const { error } = await supabase.from('reviews').insert([{
+        ride_id: lastRide.id,
+        driver_id: lastRide.driver_id,
+        user_id: user.id,
+        rating: rating,
+        comment: "" // Could add a comment field later
+      }])
+
+      if (!error) {
+        toast.success("Thank you for your feedback!")
+        setShowFeedback(false)
+        setRating(0)
+      } else {
+        console.error(error)
+        toast.error("Failed to save review")
+      }
+    } else {
+      setShowFeedback(false)
     }
   }
 
@@ -563,6 +602,45 @@ export default function UserDashboard() {
       </AnimatePresence>
 
       {/* NEW NAVIGATION BAR: HOME, HISTORY, PROFILE */}
+      <AnimatePresence>
+        {showFeedback && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/90 backdrop-blur-xl z-[400] flex items-center justify-center p-6">
+            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="w-full max-w-sm bg-white rounded-[4rem] p-10 shadow-2xl text-center">
+              <div className="w-24 h-24 bg-emerald-50 rounded-[3rem] flex items-center justify-center text-emerald-600 mx-auto mb-8 shadow-inner">
+                <Star className="w-12 h-12 fill-emerald-600" />
+              </div>
+              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter italic mb-2">Rate your Trip</h2>
+              <p className="text-sm font-medium text-slate-400 mb-10 px-4">How was your experience with our partner driver?</p>
+              
+              <div className="flex justify-center gap-3 mb-12">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button 
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${rating >= star ? 'bg-amber-500 text-white shadow-lg shadow-amber-200 scale-110' : 'bg-slate-50 text-slate-300'}`}
+                  >
+                    <Star className={`w-6 h-6 ${rating >= star ? 'fill-white' : ''}`} />
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={handleSubmitFeedback}
+                className="w-full py-6 bg-emerald-600 text-white rounded-[2.5rem] font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-emerald-200 hover:bg-emerald-700 transition-all active:scale-95 mb-4"
+              >
+                Submit Feedback
+              </button>
+              <button 
+                onClick={() => setShowFeedback(false)}
+                className="text-[10px] font-black text-slate-300 uppercase tracking-widest hover:text-slate-400 transition-colors"
+              >
+                Skip for now
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <nav className="fixed bottom-0 w-full h-24 bg-white border-t border-slate-100 flex items-center justify-around px-8 z-50 shadow-[0_-8px_30px_rgba(0,0,0,0.04)]">
         {[
           { id: 'home', icon: Home, label: 'Home' },

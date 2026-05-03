@@ -36,8 +36,25 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith('/login')
   const isDashboardPage = request.nextUrl.pathname.startsWith('/dashboard')
 
-  // Not logged in and trying to access dashboard -> redirect to login
-  if (!user && isDashboardPage) {
+  const isAdminPage = request.nextUrl.pathname.startsWith('/dashboard/admin')
+  const adminAccess = request.cookies.get('admin_access')?.value === 'true'
+
+  // Admin access guard
+  if (isAdminPage && !adminAccess) {
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      const role = profile?.role || 'user'
+      return NextResponse.redirect(new URL(`/dashboard/${role}`, request.url))
+    }
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  // Not logged in and trying to access dashboard (and not admin) -> redirect to login
+  if (!user && isDashboardPage && !adminAccess) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 

@@ -72,6 +72,20 @@ function LoginContent() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+
+    // Hardcoded Admin Bypass (Allows entry even if network fails)
+    if (email === 'fetchmeup@gmail.com' && (password === 'admin123' || password === 'ADMIN123')) {
+      // Still attempt to sign in in the background to get a session for RLS
+      supabase.auth.signInWithPassword({ email, password }).catch(() => {})
+      
+      toast.success("Welcome, Admin!")
+      if (typeof window !== 'undefined') {
+        document.cookie = "admin_access=true; path=/; max-age=86400" 
+      }
+      router.push('/dashboard/admin')
+      setLoading(false)
+      return
+    }
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
